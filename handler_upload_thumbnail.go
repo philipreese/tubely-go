@@ -2,6 +2,7 @@ package main
 
 import (
 	"io"
+	"mime"
 	"net/http"
 	"os"
 
@@ -39,9 +40,13 @@ func (cfg *apiConfig) handlerUploadThumbnail(w http.ResponseWriter, r *http.Requ
 	}
 	defer file.Close()
 
-	mediaType := header.Header.Get("Content-Type")
-	if mediaType == "" {
-		respondWithError(w, http.StatusBadRequest, "Missing Content-Type for thumbnail", err)
+	mediaType, _, err := mime.ParseMediaType(header.Header.Get("Content-Type"))
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid Content-Type", err)
+		return
+	}
+	if mediaType != "image/jpeg" && mediaType != "image/png" {
+		respondWithError(w, http.StatusBadRequest, "Invalid file type", err)
 		return
 	}
 
@@ -65,7 +70,7 @@ func (cfg *apiConfig) handlerUploadThumbnail(w http.ResponseWriter, r *http.Requ
 		return
 	}
 	defer thumbnailFile.Close()
-	
+
 	if _, err := io.Copy(thumbnailFile, file); err != nil {
 		respondWithError(w, http.StatusInternalServerError, "Unable to save thumbnail", err)
 		return
